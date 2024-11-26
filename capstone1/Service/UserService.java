@@ -139,18 +139,18 @@ public class UserService {
     }
 
     public int addShoppingCart(String productId, String merchantId) {
-        for (MerchantStock merchantStock : merchantStockService.merchantStocks) {
-            if (merchantStock.getProductID().equals(productId) && merchantStock.getMerchantID().equals(merchantId)) {
-                for (Product product : productService.products) {
-                    if (product.getId().equals(productId)) {
-                        shoppingCart.add(product);
-                        return 0;
+                for (MerchantStock merchantStock : merchantStockService.merchantStocks) {
+                    if (merchantStock.getMerchantID().equals(merchantId)) {
+                        for (Product product : productService.products) {
+                            if (product.getId().equals(productId)) {
+                                    shoppingCart.add(product);
+                                    return 0;
+                            }
+                        }
+                        return 1;
                     }
                 }
-                return 1;
-            }
-        }
-        return 2;
+                return 2;
 
     }
 
@@ -212,10 +212,8 @@ public class UserService {
     //Extra 5
 
     public List<Product> recommendProducts(String userId) {
-
         User user = users.stream().filter(u -> u.getId().equals(userId)).findFirst().orElse(null);
         if (user == null) return null;
-
 
         Map<String, Integer> categoryCount = new HashMap<>();
 
@@ -227,14 +225,22 @@ public class UserService {
             }
         }
 
-        String mostPurchasedCategory = categoryCount.entrySet().stream().max(Map.Entry.comparingByValue()).map(Map.Entry::getKey).orElse(null);
+        String mostPurchasedCategory = categoryCount.entrySet().stream()
+                .max(Map.Entry.comparingByValue())
+                .map(Map.Entry::getKey)
+                .orElse(null);
 
         if (mostPurchasedCategory == null) return new ArrayList<>();
 
-        List<Product> recommendedProducts = productService.products.stream().filter(p -> p.getCategoryId().equals(mostPurchasedCategory) && !user.getPurchasedProducts().contains(p.getId())).toList();
+        List<Product> recommendedProducts = productService.products.stream()
+                .filter(p -> p.getCategoryId().equals(mostPurchasedCategory))
+                .filter(p -> !user.getPurchasedProducts().contains(p.getId()))
+                .filter(p -> p.getPrice() <= user.getBalance())
+                .toList();
 
         return recommendedProducts;
     }
+
 
 
 
