@@ -1,120 +1,71 @@
-package com.example.capstone1.Service;
+package com.example.capstone1.Controller;
 
-import com.example.capstone1.Model.Merchant;
+import com.example.capstone1.ApiResponse.ApiResponse;
 import com.example.capstone1.Model.MerchantStock;
-import com.example.capstone1.Model.Product;
+import com.example.capstone1.Service.MerchantStockService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
+import org.springframework.http.ResponseEntity;
+import org.springframework.validation.Errors;
+import org.springframework.web.bind.annotation.*;
 
-import java.util.*;
-import java.util.stream.Collectors;
-
-@Service
+@RestController
+@RequestMapping("/api/v1/merchant-stock")
 @RequiredArgsConstructor
-public class MerchantStockService {
+public class MerchantStockController {
+    private final MerchantStockService merchantStockService;
 
-    private final MerchantService merchantService;
-    private final ProductService productService;
-
-
-    ArrayList<MerchantStock> merchantStocks = new ArrayList<>();
-
-    public ArrayList<MerchantStock> getMerchantStocks() {
-        return merchantStocks;
+    @GetMapping("/get")
+    public ResponseEntity getMerchantStock() {
+        return ResponseEntity.status(200).body(merchantStockService.getMerchantStocks());
     }
 
-    public int addMerchantStock(MerchantStock merchantStock) {
-        for (Product product:productService.getProducts()) {
-            if (product.getId().equals(merchantStock.getProductID())) {
-                for (Merchant merchant : merchantService.merchants) {
-                    if (merchant.getId().equals(merchantStock.getMerchantID())) {
-                        merchantStocks.add(merchantStock);
-                        return 0;
-                    }
-                }
-                return 1;
-            }
-
-        }
-        return 2;
+    @PostMapping("/add")
+    public ResponseEntity addMerchantStock(@RequestBody @Valid MerchantStock merchantStock, Errors errors) {
+        if (errors.hasErrors()) return ResponseEntity.status(400).body(errors.getFieldError().getDefaultMessage());
+        return switch (merchantStockService.addMerchantStock(merchantStock)){
+            case 0 -> ResponseEntity.status(200).body(new ApiResponse("Merchant Stock Added Successfully"));
+            case 1 -> ResponseEntity.status(400).body(new ApiResponse("Merchant Not Found"));
+            case 2 -> ResponseEntity.status(400).body(new ApiResponse("Product Not Found"));
+            default -> ResponseEntity.status(400).body(new ApiResponse("Merchant Stock Failed To Be Added"));
+        };
     }
 
-    public boolean updateMerchantStock(String id, MerchantStock merchantStock) {
-        for (MerchantStock merchantStock1 : merchantStocks) {
-            if (merchantStock1.getId().equals(id)) {
-                merchantStocks.set(merchantStocks.indexOf(merchantStock), merchantStock);
-                return true;
-            }
-        }
-        return false;
+    @PutMapping("/update/{id}")
+    public ResponseEntity updateMerchantStock(@PathVariable String id,@RequestBody @Valid MerchantStock merchantStock,Errors errors) {
+        if (errors.hasErrors()) return ResponseEntity.status(400).body(errors.getFieldError().getDefaultMessage());
+        if (merchantStockService.updateMerchantStock(id,merchantStock)) return ResponseEntity.status(200).body(new ApiResponse("Merchant stock updated successfully"));
+        return ResponseEntity.status(400).body(new ApiResponse("Merchant stock not found"));
     }
 
-    public boolean deleteMerchantStock(String id) {
-        for (MerchantStock merchantStock1 : merchantStocks) {
-            if (merchantStock1.getId().equals(id)) {
-                merchantStocks.remove(merchantStock1);
-                return true;
-            }
+    @DeleteMapping("/delete/{id}")
+    public ResponseEntity deleteMerchantStock(@PathVariable String id) {
+        if (merchantStockService.deleteMerchantStock(id)) {
+            return ResponseEntity.status(200).body(new ApiResponse("Merchant stock deleted successfully"));
         }
-        return false;
+        return ResponseEntity.status(400).body(new ApiResponse("Merchant stock not found"));
     }
 
-    public int addStock(int quantity) {
-        for (MerchantStock merchantStock : merchantStocks) {
-            for (Merchant merchant : merchantService.merchants) {
-                if (merchant.getId().equals(merchantStock.getMerchantID())) {
-                    for (Product product : productService.products) {
-                        if (product.getId().equals(merchantStock.getProductID())) {
-                            merchantStock.setStock(merchantStock.getStock() + quantity);
-                            return 0;
-                        }
-                    }
-                    return 1;
-                }
-                return 2;
-            }
-        }
-        return 3;
+    @PutMapping("/add-stock/{quantity}")
+    public ResponseEntity addStock(@PathVariable int quantity) {
+        return switch (merchantStockService.addStock(quantity)){
+            case 0 -> ResponseEntity.status(200).body(new ApiResponse("Stock added successfully"));
+            case 1 -> ResponseEntity.status(400).body(new ApiResponse("Product not found"));
+            case 2 -> ResponseEntity.status(400).body(new ApiResponse("Merchant not found"));
+            case 3 -> ResponseEntity.status(400).body(new ApiResponse("Merchant stock not found"));
+            default -> ResponseEntity.status(400).body(new ApiResponse("Something went wrong"));
+        };
     }
 
-
-    //Extra 3
-    public List<Product> sorting(String categoryId, String sortBy, Double minPrice, Double maxPrice, boolean inStockOnly, int page, int size) {
-        List<Product> filteredProducts = productService.products.stream()
-                .filter(product -> product.getCategoryId().equals(categoryId))
-                .filter(product -> (minPrice == null || product.getPrice() >= minPrice))
-                .filter(product -> (maxPrice == null || product.getPrice() <= maxPrice))
-                .collect(Collectors.toList());
-
-        filteredProducts.removeIf(product -> {
-            int totalStock = 0;
-            for (MerchantStock stock : merchantStocks) {
-                if (stock.getProductID().equals(product.getId())) {
-                    totalStock += stock.getStock();
-                }
-            }
-            return inStockOnly && totalStock == 0;
-        });
-
-        if (sortBy != null) {
-            switch (sortBy.toLowerCase()) {
-                case "price":
-                    filteredProducts.sort(Comparator.comparingDouble(Product::getPrice));
-                    break;
-                case "name":
-                    filteredProducts.sort(Comparator.comparing(Product::getName));
-                    break;
-            }
-        }
-
-        int startIndex = page * size;
-        int endIndex = Math.min(startIndex + size, filteredProducts.size());
-
-        if (startIndex >= filteredProducts.size()) {
-            return Collections.emptyList();
-        }
-
-        return filteredProducts.subList(startIndex, endIndex);
+    @GetMapping("/filter-products/{categoryId}/{minPrice}/{maxPrice}/{inStockOnly}")
+    public ResponseEntity filterProducts(@PathVariable String categoryId,@PathVariable Double minPrice,@PathVariable Double maxPrice, @PathVariable boolean inStockOnly){
+        return ResponseEntity.status(200).body(merchantStockService.filterProducts(categoryId, minPrice, maxPrice, inStockOnly));
     }
+
+    @GetMapping("/sort-products/{sortBy}/{page}/{size}")
+    public ResponseEntity sortProducts(@PathVariable String sortBy,@PathVariable int page,@PathVariable int size){
+        return ResponseEntity.status(200).body(merchantStockService.sortProducts(sortBy, page, size));
+    }
+
 
 }
