@@ -99,7 +99,7 @@ public class UserController {
     public ResponseEntity addShoppingCart(@PathVariable String productId, @PathVariable String merchantId){
         return switch (userService.addShoppingCart(productId,merchantId)){
             case 0 -> ResponseEntity.status(200).body(new ApiResponse("Product added successfully"));
-            case 1 -> ResponseEntity.status(400).body(new ApiResponse("Product not available"));
+            case 1 -> ResponseEntity.status(400).body(new ApiResponse("Product not found"));
             case 2 -> ResponseEntity.status(400).body(new ApiResponse("Merchant not found"));
             default -> ResponseEntity.status(400).body(new ApiResponse("Failed to add to shopping cart"));
         };
