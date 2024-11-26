@@ -57,11 +57,15 @@ public class MerchantStockController {
         };
     }
 
-    @GetMapping("/sorting/{categoryId}/{sortBy}/{minPrice}/{maxPrice}/{inStockOnly}/{page}/{size}")
-    public ResponseEntity sorting(@PathVariable String categoryId, @PathVariable String sortBy,@PathVariable Double minPrice,@PathVariable Double maxPrice,@PathVariable boolean inStockOnly,@PathVariable int page,@PathVariable int size){
-        if (!merchantStockService.sorting(categoryId,sortBy,minPrice,maxPrice,inStockOnly,page,size).isEmpty()){
-            return ResponseEntity.status(200).body(merchantStockService.sorting(categoryId, sortBy, minPrice, maxPrice, inStockOnly, page, size));
-        }
-        return ResponseEntity.status(400).body(new ApiResponse("Nothing found"));
+    @GetMapping("/filter-products/{categoryId}/{minPrice}/{maxPrice}/{inStockOnly}")
+    public ResponseEntity filterProducts(@PathVariable String categoryId,@PathVariable Double minPrice,@PathVariable Double maxPrice, @PathVariable boolean inStockOnly){
+        return ResponseEntity.status(200).body(merchantStockService.filterProducts(categoryId, minPrice, maxPrice, inStockOnly));
     }
+
+    @GetMapping("/sort-products/{sortBy}/{page}/{size}")
+    public ResponseEntity sortProducts(@PathVariable String sortBy,@PathVariable int page,@PathVariable int size){
+        return ResponseEntity.status(200).body(merchantStockService.sortProducts(sortBy, page, size));
+    }
+
+
 }
